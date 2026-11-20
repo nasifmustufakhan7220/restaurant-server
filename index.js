@@ -11,7 +11,7 @@ dotenv.config();
 
 const PORT = process.env.PORT || 5000;
 
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 const client = new MongoClient(process.env.MONGO_URL);
 export async function connectToMongoDB() {
   try {
@@ -34,8 +34,19 @@ app.get('/', (req, res) => {
 
 
 // vendor routes
+//get menu
+app.get('/vendor/:id/my-menu', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const result = await menuCollection.find({ vendorId: id}).toArray(); 
+    console.log(result);
+    res.send(result);
+  }catch (error) {
+    console.error('Error fetching menu:', error);
+    res.status(500).send({ message: 'Internal server error' });
+  }
+});
 //add menu
-
 app.post('/vendor/add-menu',async (req, res) => {
   try {
     const menuData = req.body;
@@ -45,7 +56,9 @@ app.post('/vendor/add-menu',async (req, res) => {
     console.error('Error adding menu:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
-})
+});
+
+
 // vendor routes
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
