@@ -24,6 +24,7 @@ export async function connectToMongoDB() {
 }
 const connectMongoClient = await connectToMongoDB();
 const db = connectMongoClient.db("pizza-hub");
+const usersCollection = db.collection("user");
 const menuCollection = db.collection("menu");
 
 
@@ -81,6 +82,39 @@ app.patch('/vendor/update-menu/:id', async (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 });
+
+//delete menu
+app.delete('/vendor/delete-menu/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const result = await menuCollection.deleteOne({ _id: new ObjectId(id) });
+    //need to add another checks if this item is deleted from the vendor database then we need to delete this item from other collections as well.
+    res.send(result);
+  } catch (error) {
+    console.error('Error deleting menu:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// vendor routes
+
+
+
+// admin routes
+
+//getAllUsers
+
+app.get('/admin/get-all-users', async (req, res) => {
+  try {
+    const users = await usersCollection.find({}).toArray();
+    res.send(users);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// admin routes
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
