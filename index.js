@@ -39,13 +39,24 @@ app.get('/vendor/:id/my-menu', async (req, res) => {
   try {
     const id = req.params.id;
     const result = await menuCollection.find({ vendorId: id}).toArray(); 
-    console.log(result);
     res.send(result);
   }catch (error) {
     console.error('Error fetching menu:', error);
     res.status(500).send({ message: 'Internal server error' });
   }
 });
+
+//get vendor menu details
+app.get('/vendor/menu-details/:id', async (req, res) => {
+  try{
+    const id = req.params.id;
+    const result = await menuCollection.findOne({ _id: new ObjectId(id) });
+    res.send(result);
+  } catch (error) {
+    console.error('Error fetching menu details:', error);
+    res.status(500).send({ message: 'Internal server error' });
+  }
+})
 //add menu
 app.post('/vendor/add-menu',async (req, res) => {
   try {
@@ -58,8 +69,19 @@ app.post('/vendor/add-menu',async (req, res) => {
   }
 });
 
+//update menu
+app.patch('/vendor/update-menu/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const updateData = req.body;
+    const result = await menuCollection.updateOne({ _id: new ObjectId(id) }, { $set: updateData });
+    res.send(result);
+  } catch (error) {
+    console.error('Error updating menu:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
 
-// vendor routes
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
