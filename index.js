@@ -154,6 +154,17 @@ app.patch('/admin/update-menu/:id', async (req, res) => {
   }
 });
 
+app.delete('/admin/delete-menu/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const result = await menuCollection.deleteOne({ _id: new ObjectId(id) });
+    res.send(result);
+  } catch (error) {
+    console.error('Error deleting menu:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 // admin routes
 
 app.listen(PORT, () => {
