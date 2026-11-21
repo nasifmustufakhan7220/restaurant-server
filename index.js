@@ -127,6 +127,33 @@ app.get('/admin/get-user-details/:id', async (req, res) => {
   }
 });
 
+app.get('/admin/get-all-menu', async (req, res) => {
+  try {
+    const menuItems = await menuCollection.find({}).toArray();
+    res.send(menuItems);
+  } catch (error) {
+    console.error('Error fetching menu items:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+app.patch('/admin/update-menu/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const updateData = req.body;
+    const updateDoc = {
+      $set: {
+        status: updateData.status,
+      }
+    }
+    const result = await menuCollection.updateOne({ _id: new ObjectId(id) }, updateDoc);
+    res.send(result);
+  } catch (error) {
+    console.error('Error updating menu:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 // admin routes
 
 app.listen(PORT, () => {
