@@ -114,6 +114,19 @@ app.get('/admin/get-all-users', async (req, res) => {
   }
 });
 
+// get user Details
+
+app.get('/admin/get-user-details/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const user = await usersCollection.findOne({ _id: new ObjectId(id)});
+    res.send(user);
+  } catch (error) {
+    console.error('Error fetching user details:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 // admin routes
 
 app.listen(PORT, () => {
