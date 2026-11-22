@@ -183,6 +183,21 @@ app.delete("/admin/delete-menu/:id", async (req, res) => {
 
 // admin routes
 
+
+// home routes
+
+//get six menu items
+app.get("/home/get-six-menu", async (req,res)=>{
+  try{
+    const menuItems = await menuCollection.find({}).toArray();
+    res.status(200).send(menuItems);
+  }catch(error){
+    console.error("Error fetching menu items:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+})
+// home routes
+
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
