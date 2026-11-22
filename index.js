@@ -233,7 +233,6 @@ app.get("/browse/get-all-menu", async (req, res) => {
         query.$or=[
           {itemName:{$regex:req.query.search, $options: "i"}},
           {description: {$regex:req.query.search, $options: "i"}},
-          {price: {$regex:req.query.search, $options: "i"}},
         ]
       }
 
