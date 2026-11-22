@@ -222,7 +222,7 @@ app.get("/browse/get-all-menu", async (req, res) => {
         res.status(200).send(filtered);
         return;
       }else if(req.query.location){
-        query.location = req.query.location;
+        query.location =  {$regex: req.query.location, $options: "i"};
          const menuItems = await menuCollection.find(query).toArray();
         const filtered = menuItems.filter(
           (item) => item.status === "Approved" && item.isAvailable === true,
