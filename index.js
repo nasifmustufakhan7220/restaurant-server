@@ -184,7 +184,7 @@ app.delete("/admin/delete-menu/:id", async (req, res) => {
 // admin routes
 
 
-// home routes
+//Public home routes
 
 //get six menu items
 app.get("/home/get-six-menu", async (req,res)=>{
@@ -195,8 +195,19 @@ app.get("/home/get-six-menu", async (req,res)=>{
     console.error("Error fetching menu items:", error);
     res.status(500).json({ message: "Internal server error" });
   }
-})
-// home routes
+});
+
+app.get("/home/get-menu-details/:id", async (req,res)=>{
+  try{
+    const id = req.params.id;
+    const menuDetails = await menuCollection.findOne({ _id: new ObjectId(id) });
+    res.status(200).send(menuDetails);
+  }catch(error){
+    console.error("Error fetching menu details:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+// Public home routes
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
