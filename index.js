@@ -209,6 +209,19 @@ app.get("/home/get-menu-details/:id", async (req,res)=>{
 });
 // Public home routes
 
+
+
+//Browse routes
+app.get("/browse/get-all-menu", async (req,res)=>{
+  try{
+    const menuItems = await menuCollection.find({}).toArray();
+    res.status(200).send(menuItems);
+  }catch(error){
+    console.error("Error fetching menu items:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+//Browse routes
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
