@@ -151,7 +151,7 @@ app.patch("/admin/update-menu/:id", async (req, res) => {
         updateDoc,
       );
       res.send(result);
-    }else{
+    } else {
       const updateDoc = {
         $set: {
           status: updateData.status,
@@ -183,40 +183,67 @@ app.delete("/admin/delete-menu/:id", async (req, res) => {
 
 // admin routes
 
-
 //Public home routes
 
 //get six menu items
-app.get("/home/get-six-menu", async (req,res)=>{
-  try{
+app.get("/home/get-six-menu", async (req, res) => {
+  try {
     const menuItems = await menuCollection.find({}).toArray();
     res.status(200).send(menuItems);
-  }catch(error){
+  } catch (error) {
     console.error("Error fetching menu items:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
 
-app.get("/home/get-menu-details/:id", async (req,res)=>{
-  try{
+app.get("/home/get-menu-details/:id", async (req, res) => {
+  try {
     const id = req.params.id;
     const menuDetails = await menuCollection.findOne({ _id: new ObjectId(id) });
     res.status(200).send(menuDetails);
-  }catch(error){
+  } catch (error) {
     console.error("Error fetching menu details:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
 // Public home routes
 
-
-
 //Browse routes
-app.get("/browse/get-all-menu", async (req,res)=>{
-  try{
-    const menuItems = await menuCollection.find({}).toArray();
-    res.status(200).send(menuItems);
-  }catch(error){
+app.get("/browse/get-all-menu", async (req, res) => {
+  try {
+    const query = {};
+    if (req.query) {
+      if (req.query.category) {
+        query.category = req.query.category;
+        const menuItems = await menuCollection.find(query).toArray();
+        const filtered = menuItems.filter(
+          (item) => item.status === "Approved" && item.isAvailable === true,
+        );
+        res.status(200).send(filtered);
+        return;
+      }else if(req.query.location){
+        query.location = req.query.location;
+         const menuItems = await menuCollection.find(query).toArray();
+        const filtered = menuItems.filter(
+          (item) => item.status === "Approved" && item.isAvailable === true,
+        );
+        res.status(200).send(filtered);
+        return;
+      }else if(req.query.search){
+        query.$or=[
+          {itemName:{$regex:req.query.search, $options: "i"}},
+          {description: {$regex:req.query.search, $options: "i"}},
+          {price: {$regex:req.query.search, $options: "i"}},
+        ]
+      }
+
+    }
+      const menuItems = await menuCollection.find(query).toArray();
+     const filtered = menuItems.filter(
+          (item) => item.status === "Approved" && item.isAvailable === true,
+        );
+        res.status(200).send(filtered);
+  } catch (error) {
     console.error("Error fetching menu items:", error);
     res.status(500).json({ message: "Internal server error" });
   }
@@ -225,6 +252,5 @@ app.get("/browse/get-all-menu", async (req,res)=>{
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
-
 
 export default app;
