@@ -26,6 +26,7 @@ const connectMongoClient = await connectToMongoDB();
 const db = connectMongoClient.db("pizza-hub");
 const usersCollection = db.collection("user");
 const menuCollection = db.collection("menu");
+const orderCollection = db.collection("order");
 
 app.get("/", (req, res) => {
   res.send("Hello, World!");
@@ -248,6 +249,21 @@ app.get("/browse/get-all-menu", async (req, res) => {
   }
 });
 //Browse routes
+
+
+
+//Customer routes
+app.post("/customer/add-order", async (req, res) => {
+  try {
+    const orderData = req.body;
+    const result = await orderCollection.insertOne(orderData);
+    res.status(201).send(result);
+  } catch (error) {
+    console.error("Error adding order:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+//Customer routes
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
