@@ -31,18 +31,67 @@ const usersCollection = db.collection("user");
 const menuCollection = db.collection("menu");
 const orderCollection = db.collection("order");
 const paymentCollection = db.collection("payment");
+const sessionCollection = db.collection("session");
 
 app.get("/", (req, res) => {
   res.send("Hello, World!");
 });
 
+
+const verifyToken = async(req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if(!authHeader){
+    res.status(401).send({message: "Unauthorized access"});
+    return 
+  }
+  console.log("Authorization header:", authHeader);
+  const token = authHeader.split(" ")[1];
+  if(!token){
+     res.status(401).send({message: "Unauthorized access"});
+     return;
+  }
+  console.log("Token:", token);
+  const query = {token};
+  const session = await sessionCollection.findOne(query);
+  if(!session){
+    res.status(401).send({message: "Unauthorized access"});
+    return;
+  }
+  console.log("Session found:", session);
+  const user = await usersCollection.findOne({_id: new ObjectId(session.userId)});
+  console.log("User found:", user);
+  req.user = user;
+  next();
+}
+
+
+const verifyAdmin = (req,res,next)=>{
+  if(req.user.role !== "admin"){
+    res.status(403).send({message: "Forbidden access"});
+    return;
+  }
+  next();
+}
+
+const verifyVendor = (req,res,next)=>{
+  if(req.user.role !== "vendor"){
+    res.status(403).send({message: "Forbidden access"});
+    return;
+  }
+  next();
+}
+
 // vendor routes
 //get menu
-app.get("/vendor/:id/my-menu", async (req, res) => {
+app.get("/vendor/:id/my-menu", verifyToken, verifyVendor ,async (req, res) => {
   try {
     const id = req.params.id;
-    const result = await menuCollection.find({ vendorId: id }).toArray();
-    res.send(result);
+    if(id === req.user._id.toString()){
+      const result = await menuCollection.find({ vendorId: id }).toArray();
+      res.send(result);
+      return;
+    }
+    res.status(403).send({message: "Forbidden access"});
   } catch (error) {
     console.error("Error fetching menu:", error);
     res.status(500).send({ message: "Internal server error" });
@@ -50,11 +99,15 @@ app.get("/vendor/:id/my-menu", async (req, res) => {
 });
 
 //get vendor menu details
-app.get("/vendor/menu-details/:id", async (req, res) => {
+app.get("/vendor/menu-details/:id", verifyToken, verifyVendor, async (req, res) => {
   try {
     const id = req.params.id;
     const result = await menuCollection.findOne({ _id: new ObjectId(id) });
-    res.send(result);
+    if(result.vendorId === req.user._id.toString()){
+      res.send(result);
+      return;
+    }
+    res.status(403).send({message: "Forbidden access"});
   } catch (error) {
     console.error("Error fetching menu details:", error);
     res.status(500).send({ message: "Internal server error" });
@@ -62,25 +115,28 @@ app.get("/vendor/menu-details/:id", async (req, res) => {
 });
 
 // get crate menut count
-app.get("/vendor/menu-count", async (req, res) => {
+app.get("/vendor/menu-count", verifyToken, verifyVendor ,async (req, res) => {
   try {
     const query = {};
-    if (req.query.vendorId) {
+    if (req.query.vendorId && req.query.vendorId === req.user._id.toString()) {
       query.vendorId = req.query.vendorId;
+      const result = await menuCollection.countDocuments(query);
+      res.status(200).send({ count: result });
     }
-    const result = await menuCollection.countDocuments(query);
-    res.status(200).send({ count: result });
   } catch (error) {
     console.error("Error fetching menu count:", error);
     res.status(500).send({ message: "Internal server error" });
   }
 });
 //add menu
-app.post("/vendor/add-menu", async (req, res) => {
+app.post("/vendor/add-menu",verifyToken, verifyVendor,async (req, res) => {
   try {
     const menuData = req.body;
-    const result = await menuCollection.insertOne(menuData);
-    res.status(201).send(result);
+    if(req.user._id.toString() === menuData.vendorId){
+      const result = await menuCollection.insertOne(menuData);
+      res.status(201).send(result);
+    }
+    res.status(403).send({message: "Forbidden access"});
   } catch (error) {
     console.error("Error adding menu:", error);
     res.status(500).json({ message: "Internal server error" });
@@ -88,15 +144,22 @@ app.post("/vendor/add-menu", async (req, res) => {
 });
 
 //update menu
-app.patch("/vendor/update-menu/:id", async (req, res) => {
+app.patch("/vendor/update-menu/:id", verifyToken, verifyVendor, async (req, res) => {
   try {
     const id = req.params.id;
     const updateData = req.body;
-    const result = await menuCollection.updateOne(
-      { _id: new ObjectId(id) },
-      { $set: updateData },
-    );
-    res.send(result);
+    const userId = await menuCollection.findOne({_id: new ObjectId(id)})
+    if( userId.vendorId === req.user._id.toString()){
+
+      const result = await menuCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: updateData },
+      );
+      res.send(result);
+      return;
+    }
+    res.status(403).send({message: "Forbidden access"});
+
   } catch (error) {
     console.error("Error updating menu:", error);
     res.status(500).json({ message: "Internal server error" });
@@ -104,12 +167,17 @@ app.patch("/vendor/update-menu/:id", async (req, res) => {
 });
 
 //delete menu
-app.delete("/vendor/delete-menu/:id", async (req, res) => {
+app.delete("/vendor/delete-menu/:id", verifyToken, verifyVendor, async (req, res) => {
   try {
     const id = req.params.id;
-    const result = await menuCollection.deleteOne({ _id: new ObjectId(id) });
-    //need to add another checks if this item is deleted from the vendor database then we need to delete this item from other collections as well.
-    res.send(result);
+    const userId = await menuCollection.findOne({_id: new ObjectId(id)})
+    if(userId.vendorId === req.user._id.toString()){
+      const result = await menuCollection.deleteOne({ _id: new ObjectId(id) });
+      await orderCollection.deleteMany({itemId: id});
+      res.send(result);
+      return;
+    }
+    res.status(403).send({message: "Forbidden access"});
   } catch (error) {
     console.error("Error deleting menu:", error);
     res.status(500).json({ message: "Internal server error" });
@@ -117,11 +185,15 @@ app.delete("/vendor/delete-menu/:id", async (req, res) => {
 });
 
 // orders
-app.get("/vendor/get-orders/:email", async (req, res) => {
+app.get("/vendor/get-orders/:email", verifyToken, verifyVendor, async (req, res) => {
   try {
     const email = req.params.email;
-    const orders = await orderCollection.find({ vendorEmail: email }).toArray();
-    res.status(200).send(orders);
+    if(email === req.user.email){
+      const orders = await orderCollection.find({ vendorEmail: email }).toArray();
+      res.status(200).send(orders);
+      return;
+    }
+    res.status(403).send({message: "Forbidden access"});
   } catch (error) {
     console.error("Error fetching orders:", error);
     res.status(500).json({ message: "Internal server error" });
@@ -129,30 +201,36 @@ app.get("/vendor/get-orders/:email", async (req, res) => {
 });
 
 //customer order details for vendor
-app.patch("/vendor/order-status-update/:id", async (req, res) => {
+app.patch("/vendor/order-status-update/:id", verifyToken, verifyVendor, async (req, res) => {
   try {
     const id = req.params.id;
     const updateData = req.body;
-    const updateDoc = {
-      $set: {
-        orderStatus: updateData.orderStatus,
-      },
+    const userID = await orderCollection.findOne({ _id: new ObjectId(id) });
+    if(userID.vendorId === req.user._id.toString()){
+      const updateDoc = {
+        $set: {
+          orderStatus: updateData.orderStatus,
+        },
+      };
+      const result = await orderCollection.updateOne(
+        { _id: new ObjectId(id) },
+        updateDoc,
+      );
+      res.status(200).send(result);
     };
-    const result = await orderCollection.updateOne(
-      { _id: new ObjectId(id) },
-      updateDoc,
-    );
-    res.status(200).send(result);
+
+    res.status(403).send({message: "Forbidden access"});
+    return;
   } catch (error) {
     console.error("Error updating order details:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
 
-app.get("/vendor/:id/premium", async (req, res) => {
+app.get("/vendor/:id/premium", verifyToken, verifyVendor,async (req, res) => {
   try {
     const id = req.params.id;
-    const query = { _id: new ObjectId(id) };
+    const query = { _id: new ObjectId(id)};
     const vendor = await usersCollection.findOne(query, { projection: { premium: 1 } });
     res.send(vendor);
   } catch (error) {
@@ -163,14 +241,19 @@ app.get("/vendor/:id/premium", async (req, res) => {
 
 // vendor routes
 
+
+
 // admin routes
 
 //getAllUsers
-
-app.get("/admin/get-all-users", async (req, res) => {
+app.get("/admin/get-all-users", verifyToken, async (req, res) => {
   try {
-    const users = await usersCollection.find({}).toArray();
-    res.send(users);
+
+    if(req.user.role === "admin"){
+      const users = await usersCollection.find({}).toArray();
+      res.send(users);
+    }
+    res.status(403).send({message: "Forbidden access"});
   } catch (error) {
     console.error("Error fetching users:", error);
     res.status(500).json({ message: "Internal server error" });
@@ -178,19 +261,21 @@ app.get("/admin/get-all-users", async (req, res) => {
 });
 
 // get user Details
-
-app.get("/admin/get-user-details/:id", async (req, res) => {
+app.get("/admin/get-user-details/:id", verifyToken,async (req, res) => {
   try {
     const id = req.params.id;
-    const user = await usersCollection.findOne({ _id: new ObjectId(id) });
-    res.send(user);
+    if(req.user.role === "admin"){
+      const user = await usersCollection.findOne({ _id: new ObjectId(id) });
+      res.send(user);
+    }
+    res.status(403).send({message: "Forbidden access"});
   } catch (error) {
     console.error("Error fetching user details:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
 
-app.get("/admin/get-all-menu", async (req, res) => {
+app.get("/admin/get-all-menu", verifyToken,verifyAdmin,async (req, res) => {
   try {
     const menuItems = await menuCollection.find({}).toArray();
     res.send(menuItems);
@@ -200,7 +285,7 @@ app.get("/admin/get-all-menu", async (req, res) => {
   }
 });
 
-app.patch("/admin/update-menu/:id", async (req, res) => {
+app.patch("/admin/update-menu/:id", verifyToken, verifyAdmin, async (req, res) => {
   try {
     const id = req.params.id;
     const updateData = req.body;
@@ -235,10 +320,11 @@ app.patch("/admin/update-menu/:id", async (req, res) => {
   }
 });
 
-app.delete("/admin/delete-menu/:id", async (req, res) => {
+app.delete("/admin/delete-menu/:id",verifyToken, verifyAdmin, async (req, res) => {
   try {
     const id = req.params.id;
     const result = await menuCollection.deleteOne({ _id: new ObjectId(id) });
+    await orderCollection.deleteMany({itemId: id});
     res.send(result);
   } catch (error) {
     console.error("Error deleting menu:", error);
@@ -313,14 +399,20 @@ app.get("/browse/get-all-menu", async (req, res) => {
 });
 //Browse routes
 
+
+
 //Customer routes
 
 //add order
-app.post("/customer/add-order", async (req, res) => {
+app.post("/customer/add-order", verifyToken ,async (req, res) => {
   try {
     const orderData = req.body;
-    const result = await orderCollection.insertOne(orderData);
-    res.status(201).send(result);
+    if(orderData.customerId === req.user._id.toString()){
+      const result = await orderCollection.insertOne(orderData);
+      res.status(201).send(result);
+      return
+    }
+    res.status(403).send({message: "Unauthorized access"});
   } catch (error) {
     console.error("Error adding order:", error);
     res.status(500).json({ message: "Internal server error" });
@@ -328,11 +420,14 @@ app.post("/customer/add-order", async (req, res) => {
 });
 
 //get orders by customer id
-app.get("/customer/get-orders/:id", async (req, res) => {
+app.get("/customer/get-orders/:id",verifyToken, async (req, res) => {
   try {
     const id = req.params.id;
-    const orders = await orderCollection.find({ customerId: id }).toArray();
-    res.status(200).send(orders);
+    if(id === req.user._id.toString()){
+      const orders = await orderCollection.find({ customerId: id }).toArray();
+      return res.status(200).send(orders);
+    }
+    return res.status(403).send({message: "Forbidden access"});
   } catch (error) {
     console.error("Error fetching orders:", error);
     res.status(500).json({ message: "Internal server error" });
@@ -340,11 +435,17 @@ app.get("/customer/get-orders/:id", async (req, res) => {
 });
 
 //Delete order by order id
-app.delete("/customer/delete-order/:id", async (req, res) => {
+app.delete("/customer/delete-order/:id",verifyToken,async (req, res) => {
   try {
     const id = req.params.id;
-    const result = await orderCollection.deleteOne({ _id: new ObjectId(id) });
-    res.status(200).send(result);
+    console.log("Order ID to delete:", id);
+    const customer = await orderCollection.findOne({_id:new ObjectId(id)});
+    if(customer.customerId === req.user._id.toString()){
+      const result = await orderCollection.deleteOne({ _id: new ObjectId(id) });
+      res.status(200).send(result);
+      return;
+    }
+    res.status(403).send({message: "Forbidden access"});
   } catch (error) {
     console.error("Error deleting order:", error);
     res.status(500).json({ message: "Internal server error" });
