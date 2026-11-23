@@ -97,6 +97,36 @@ app.delete("/vendor/delete-menu/:id", async (req, res) => {
   }
 });
 
+
+app.get("/vendor/get-orders/:email", async(req,res)=>{
+  try{
+    const email = req.params.email;
+    const orders = await orderCollection.find({vendorEmail: email}).toArray();
+    res.status(200).send(orders);
+  }catch(error){
+    console.error("Error fetching orders:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+})
+
+//customer order details for vendor
+app.patch("/vendor/order-status-update/:id", async (req,res)=>{
+  try{
+    const id = req.params.id;
+    const updateData = req.body;
+    const updateDoc = {
+        $set: {
+          orderStatus: updateData.orderStatus,
+        },
+      };
+    const result = await orderCollection.updateOne({_id: new ObjectId(id)}, updateDoc);
+    res.status(200).send(result);
+  }catch(error){
+    console.error("Error updating order details:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+})
+
 // vendor routes
 
 // admin routes
@@ -266,7 +296,7 @@ app.post("/customer/add-order", async (req, res) => {
   }
 });
 
-
+//get orders by customer id
 app.get("/customer/get-orders/:id", async (req, res) => {
   try {
     const id = req.params.id;
@@ -274,6 +304,18 @@ app.get("/customer/get-orders/:id", async (req, res) => {
     res.status(200).send(orders);
   } catch (error) {
     console.error("Error fetching orders:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+//Delete order by order id
+app.delete("/customer/delete-order/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+    const result = await orderCollection.deleteOne({_id: new ObjectId(id)});
+    res.status(200).send(result);
+  } catch (error) {
+    console.error("Error deleting order:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
