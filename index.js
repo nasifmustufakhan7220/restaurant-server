@@ -332,6 +332,16 @@ app.delete("/admin/delete-menu/:id",verifyToken, verifyAdmin, async (req, res) =
   }
 });
 
+app.get("/admin/get-all-payments", verifyToken, verifyAdmin, async (req, res) => {
+  try {
+    const payments = await paymentCollection.find({}).toArray();
+    res.send(payments);
+  } catch (error) {
+    console.error("Error fetching payments:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 // admin routes
 
 //Public home routes
