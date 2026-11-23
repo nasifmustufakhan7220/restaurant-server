@@ -253,6 +253,8 @@ app.get("/browse/get-all-menu", async (req, res) => {
 
 
 //Customer routes
+
+//add order
 app.post("/customer/add-order", async (req, res) => {
   try {
     const orderData = req.body;
@@ -260,6 +262,18 @@ app.post("/customer/add-order", async (req, res) => {
     res.status(201).send(result);
   } catch (error) {
     console.error("Error adding order:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+
+app.get("/customer/get-orders/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+    const orders = await orderCollection.find({customerId: id}).toArray();
+    res.status(200).send(orders);
+  } catch (error) {
+    console.error("Error fetching orders:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
