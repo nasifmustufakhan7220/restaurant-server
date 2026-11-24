@@ -81,6 +81,14 @@ const verifyVendor = (req,res,next)=>{
   next();
 }
 
+const verifyCustomer = (req,res,next)=>{
+  if(req.user.role !== "customer"){
+    res.status(403).send({message: "Forbidden access"});
+    return;
+  }
+  next();
+}
+
 // vendor routes
 //get menu
 app.get("/vendor/:id/my-menu", verifyToken, verifyVendor ,async (req, res) => {
@@ -414,7 +422,7 @@ app.get("/browse/get-all-menu", async (req, res) => {
 //Customer routes
 
 //add order
-app.post("/customer/add-order", verifyToken ,async (req, res) => {
+app.post("/customer/add-order", verifyToken , verifyCustomer ,async (req, res) => {
   try {
     const orderData = req.body;
     if(orderData.customerId === req.user._id.toString()){
@@ -430,7 +438,7 @@ app.post("/customer/add-order", verifyToken ,async (req, res) => {
 });
 
 //get orders by customer id
-app.get("/customer/get-orders/:id",verifyToken, async (req, res) => {
+app.get("/customer/get-orders/:id",verifyToken, verifyCustomer, async (req, res) => {
   try {
     const id = req.params.id;
     if(id === req.user._id.toString()){
@@ -445,7 +453,7 @@ app.get("/customer/get-orders/:id",verifyToken, async (req, res) => {
 });
 
 //Delete order by order id
-app.delete("/customer/delete-order/:id",verifyToken,async (req, res) => {
+app.delete("/customer/delete-order/:id",verifyToken,verifyCustomer,async (req, res) => {
   try {
     const id = req.params.id;
     console.log("Order ID to delete:", id);
