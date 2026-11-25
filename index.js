@@ -107,6 +107,13 @@ const verifyCustomer = (req, res, next) => {
   next();
 };
 
+const verifyUserWithVendorOrCustomer = (req, res, next) => {
+  if (req.user.role !== "vendor" && req.user.role !== "customer") {
+    return res.status(403).send({ message: "Forbidden access" });
+  }
+  next();
+}
+
 // ---------- Vendor routes ----------
 
 // get vendor's menu
@@ -264,19 +271,37 @@ app.get(
   }),
 );
 
-app.patch("/vendor/:id/profile", verifyToken, verifyVendor, wrap(async (req, res) => {
-  const id = req.params.id;
-  const updateData = req.body;
-  const updateDoc = {$set: {name: updateData.name, image: updateData.image}};
-  const result = await req.users.updateOne({_id: new ObjectId(id)}, updateDoc);
-  res.send(result);
-}));
+app.patch(
+  "/vendor/:id/profile",
+  verifyToken,
+  verifyVendor,
+  wrap(async (req, res) => {
+    const id = req.params.id;
+    const updateData = req.body;
+    const updateDoc = {
+      $set: { name: updateData.name, image: updateData.image },
+    };
+    const result = await req.users.updateOne(
+      { _id: new ObjectId(id) },
+      updateDoc,
+    );
+    res.send(result);
+  }),
+);
 
-app.get("/vendor/:id/profile", verifyToken, verifyVendor, wrap(async (req, res) => {
-  const id = req.params.id;
-  const vendor = await req.users.findOne({_id: new ObjectId(id)}, {projection: {image: 1}});
-  res.send(vendor);
-}))
+app.get(
+  "/vendor/:id/profile",
+  verifyToken,
+  verifyVendor,
+  wrap(async (req, res) => {
+    const id = req.params.id;
+    const vendor = await req.users.findOne(
+      { _id: new ObjectId(id) },
+      { projection: { image: 1 } },
+    );
+    res.send(vendor);
+  }),
+);
 
 // ---------- Admin routes ----------
 
@@ -443,7 +468,60 @@ app.delete(
   }),
 );
 
+app.patch(
+  "/customer/:id/profile",
+  verifyToken,
+  verifyCustomer,
+  wrap(async (req, res) => {
+    const id = req.params.id;
+    const updateData = req.body;
+    const updateDoc = {
+      $set: { name: updateData.name, image: updateData.image },
+    };
+    const result = await req.users.updateOne(
+      { _id: new ObjectId(id) },
+      updateDoc,
+    );
+    res.send(result);
+  }),
+);
+
+app.get(
+  "/customer/:id/profile",
+  verifyToken,
+  verifyCustomer,
+  wrap(async (req, res) => {
+    const id = req.params.id;
+    if (id !== req.user._id.toString()) {
+      return res.status(403).send({ message: "Forbidden access" });
+    }
+    const customer = await req.users.findOne(
+      { _id: new ObjectId(id) },
+      { projection: { image: 1 } },
+    );
+    res.send(customer);
+  }),
+);
+
+
+
+
+
+app.get(
+  "/customer/:id/customer-vendor",
+  verifyToken,
+  verifyUserWithVendorOrCustomer,
+  wrap(async (req, res) => {
+    const id = req.params.id;
+    const customer = await req.users.findOne(
+      { _id: new ObjectId(id) });
+    res.send(customer);
+  }),
+);
 // ---------- Payment routes ----------
+
+
+
 
 app.post(
   "/payments/checkoutVerify",
@@ -459,7 +537,10 @@ app.post(
     if (status === "complete" && payment_status === "paid") {
       const existingPayment = await req.payments.findOne({ sessionId });
       if (existingPayment) {
-        return res.send({ success: false, message: "Payment already processed" });
+        return res.send({
+          success: false,
+          message: "Payment already processed",
+        });
       }
 
       const payment = {
