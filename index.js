@@ -297,7 +297,7 @@ app.get(
     const id = req.params.id;
     const vendor = await req.users.findOne(
       { _id: new ObjectId(id) },
-      { projection: { image: 1 } },
+      { projection: { image: 1, name: 1 } },
     );
     res.send(vendor);
   }),
@@ -497,7 +497,7 @@ app.get(
     }
     const customer = await req.users.findOne(
       { _id: new ObjectId(id) },
-      { projection: { image: 1 } },
+      { projection: { image: 1, name:1 } },
     );
     res.send(customer);
   }),
