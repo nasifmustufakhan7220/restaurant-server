@@ -264,6 +264,20 @@ app.get(
   }),
 );
 
+app.patch("/vendor/:id/profile", verifyToken, verifyVendor, wrap(async (req, res) => {
+  const id = req.params.id;
+  const updateData = req.body;
+  const updateDoc = {$set: {name: updateData.name, image: updateData.image}};
+  const result = await req.users.updateOne({_id: new ObjectId(id)}, updateDoc);
+  res.send(result);
+}));
+
+app.get("/vendor/:id/profile", verifyToken, verifyVendor, wrap(async (req, res) => {
+  const id = req.params.id;
+  const vendor = await req.users.findOne({_id: new ObjectId(id)}, {projection: {image: 1}});
+  res.send(vendor);
+}))
+
 // ---------- Admin routes ----------
 
 app.get(
